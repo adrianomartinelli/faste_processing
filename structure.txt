@@ -1,0 +1,9 @@
+../1812_Federica_R1_truncated_long.fasta
+Evaluation/
+7	30	C	../const1.txt
+37	5	C	../const2.txt
+66	86	C	../const3.txt
+1	6	S	../PrimerCodes1.txt
+87	92	S	../PrimerCodes2.txt
+31	36	B	../Elib2-789-DENOVO.txt
+58	65	B	../Elib4-426-DENOVO.txt
