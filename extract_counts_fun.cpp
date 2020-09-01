@@ -141,6 +141,17 @@ Counts::Counts(StructFile &s) {
     }
   }
 
+  //Set min seq length
+  for(unsigned int i = 0; i < s.code_sequences.size(); i++){
+    int tmp = s.code_location[2 * i] + s.code_location[2 * i + 1] - 1;
+    //cout << tmp <<" ";
+    if( tmp  > min_seq_length){
+      min_seq_length = tmp;
+    }
+  }
+  cout << "\tMinimal sequence length: " << min_seq_length <<endl;
+
+
   // Get file size
   std::ifstream in(s.fasta_file.c_str(), std::ifstream::ate | std::ifstream::binary);
   file_size = in.tellg();
@@ -185,67 +196,77 @@ string get_line(ifstream &inline_fasta, bool &eof) {
 void analyse_sequence(string str_fasta, StructFile &s, ThreadStats &stats, Counts &counts) {
   bool const_mismatch = false;
   bool code_mismatch = false;
+  bool length_mismatch = false;
   bool match_flag = false;
   vector<unsigned int> idx;
 
   string str1;
   string str2;
 
-  // Check const regions
-  // Loop over all const lists
-  for (int i = 0; i < s.const_sequences.size(); i++) {
-    match_flag = false;
-
-    for (int j = 0; j < s.const_sequences[i].size(); j++) {
-      str1 = s.const_sequences[i][j];
-      str2 = str_fasta.substr(s.const_location[i * 2], s.const_location[2 * i + 1]);
-
-      if (compare_str(str1, str2)) {
-        match_flag = true;
-        stats.const_match[i][j]++; //increment match count for this const identifier
-        break;
-      }
-    }
-    if (match_flag) {
-      match_flag = false;
-    } else {
-      const_mismatch = true;
-      stats.const_mismatch[i]++;
-      stats.n_discarded_seq++;
-      break;
-    }
+  // Check length of string is sufficient
+  if(counts.min_seq_length > str_fasta.length()){
+    stats.n_length_mismatch++;
+    stats.n_discarded_seq++;
+    length_mismatch = true;
   }
 
-  // Check code regions
-  if (!const_mismatch) {
-    idx.clear();
-
-    for (int i = 0; i < s.code_sequences.size(); i++) {
+  if(!length_mismatch){
+    // Check const regions
+    // Loop over all const lists
+    for (int i = 0; i < s.const_sequences.size(); i++) {
       match_flag = false;
-      // Loop over all const sequences in the current list
-      for (int j = 0; j < s.code_sequences[i].size(); j++) {
-        str1 = s.code_sequences[i][j];
-        str2 = str_fasta.substr(s.code_location[i * 2], s.code_location[2 * i + 1]);
+
+      for (int j = 0; j < s.const_sequences[i].size(); j++) {
+        str1 = s.const_sequences[i][j];
+        str2 = str_fasta.substr(s.const_location[i * 2], s.const_location[2 * i + 1]);
 
         if (compare_str(str1, str2)) {
           match_flag = true;
-          idx.push_back(j);
-          stats.code_match[i][j]++; //increment match count for this const identifier
+          stats.const_match[i][j]++; //increment match count for this const identifier
           break;
         }
       }
       if (match_flag) {
         match_flag = false;
       } else {
-        code_mismatch = true;
-        stats.code_mismatch[i]++;
+        const_mismatch = true;
+        stats.const_mismatch[i]++;
         stats.n_discarded_seq++;
         break;
       }
     }
-    if (!code_mismatch) {
-      counts.update_count(idx);
-      stats.n_analysed_seq++;
+
+    // Check code regions
+    if (!const_mismatch) {
+      idx.clear();
+
+      for (int i = 0; i < s.code_sequences.size(); i++) {
+        match_flag = false;
+        // Loop over all const sequences in the current list
+        for (int j = 0; j < s.code_sequences[i].size(); j++) {
+          str1 = s.code_sequences[i][j];
+          str2 = str_fasta.substr(s.code_location[i * 2], s.code_location[2 * i + 1]);
+
+          if (compare_str(str1, str2)) {
+            match_flag = true;
+            idx.push_back(j);
+            stats.code_match[i][j]++; //increment match count for this const identifier
+            break;
+          }
+        }
+        if (match_flag) {
+          match_flag = false;
+        } else {
+          code_mismatch = true;
+          stats.code_mismatch[i]++;
+          stats.n_discarded_seq++;
+          break;
+        }
+      }
+      if (!code_mismatch) {
+        counts.update_count(idx);
+        stats.n_analysed_seq++;
+      }
     }
   }
 }
@@ -328,6 +349,7 @@ void summary(StructFile &s, Statistics &stats, ostream &stream) {
   stream << "Total number of sequences discarded:\t" << stats.n_discarded_seq << " (" << stats.percent_discarded << " %)" << endl;
   stream << endl;
   stream << "---------- Mismatch Report ----------" << endl;
+  stream << "Length: " << stats.n_length_mismatch << endl;
   stream << "Constant Region";
   string buff = "\t";
   unsigned long sum = 0;
@@ -354,7 +376,7 @@ void summary(StructFile &s, Statistics &stats, ostream &stream) {
   for (int i = 0; i < s.const_sequences.size(); i++) {
     stream << "Constant Region " << i << endl
            << "Number of identifiers: " << s.const_n_identifier[i] << endl
-           << "Start: " << s.const_location[2 * i] << "\tEnd: " << s.const_location[2 * i] + s.const_location[2 * i + 1] - 1 << "\tLength: " << s.const_location[2 * i + 1] << "\tType: C" << endl;
+           << "Start: " << s.const_location[2 * i]+1 << "\tEnd: " << s.const_location[2 * i] + s.const_location[2 * i + 1] << "\tLength: " << s.const_location[2 * i + 1] << "\tType: C" << endl;
     //printn_vec(s.const_sequences[i], stream);
     sum = 0;
     for(int j = 0; j < s.const_sequences[i].size(); j++){
@@ -372,7 +394,7 @@ void summary(StructFile &s, Statistics &stats, ostream &stream) {
     }
     stream << "Code Region " << i << endl
            << "Number of identifiers: " << s.code_n_identifier[i] << endl
-           << "Start: " << s.code_location[2 * i] << "\tEnd: " << s.code_location[2 * i] + s.code_location[2 * i + 1] + 1 << "\tLength: " << s.code_location[2 * i + 1] << "\tType: " << type << endl;
+           << "Start: " << s.code_location[2 * i]+1 << "\tEnd: " << s.code_location[2 * i] + s.code_location[2 * i + 1] << "\tLength: " << s.code_location[2 * i + 1] << "\tType: " << type << endl;
     //printn_vec(s.code_sequences[i], stream);
     sum = 0;
     for(int j = 0; j < s.code_sequences[i].size(); j++){

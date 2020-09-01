@@ -4,7 +4,8 @@ Not new line at the end of struct file
 Selections bar codes before building block bar codes
 
 Run the following code snipped in your terminal to compile a executable file
-g++ -O3 -std=c++11 -o extract_counts.o extract_counts.cpp
+g++ -O3 -std=c++11 -o extract_counts.o extract_counts.cpp extract_counts_fun.cpp
+
 
 Run executable with:
 ./extract_counts_final.o

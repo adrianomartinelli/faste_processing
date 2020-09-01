@@ -41,6 +41,7 @@ class ThreadStats {
     vector<unsigned long> code_mismatch;
     vector<vector<unsigned long>> const_match;
     vector<vector<unsigned long>> code_match;
+    unsigned long n_length_mismatch = 0;
     unsigned long n_analysed_seq = 0;
     unsigned long n_discarded_seq = 0;
     unsigned long n_processed = 0;
@@ -80,6 +81,7 @@ class Counts {
     void update_count(vector<unsigned int> &v);
     void print_vec(vector<int> v, ofstream &of);
     size_t get_filesSize();
+    unsigned int min_seq_length = 0;    // minimal length a sequences needs to have given by max position in struct file
   };
 
 
@@ -89,6 +91,7 @@ class Statistics {
     unsigned long n_analysed_seq = 0;
     unsigned long n_discarded_seq = 0;
     unsigned long n_processed = 0;
+    unsigned long n_length_mismatch = 0;
 
     double percent_processed;
     double percent_analysed;
@@ -119,6 +122,7 @@ class Statistics {
         this->n_analysed_seq += x.n_analysed_seq;
         this->n_discarded_seq += x.n_discarded_seq;
         this->n_processed += x.n_processed;
+        this->n_length_mismatch += x.n_length_mismatch;
       });
 
       percent_processed = (double(n_analysed_seq) + double(n_discarded_seq)) / n_processed * 100;
